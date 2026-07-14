@@ -34,7 +34,10 @@ module "kms" {
 }
 
 module "rds" {
+
   source = "../../modules/rds"
+  network = module.vpc.network
+
 }
 
 module "route53" {
@@ -43,10 +46,7 @@ module "route53" {
 
 module "s3" {
   source = "../../modules/s3"
-}
-
-module "security-groups" {
-  source = "../../modules/security-groups"
+  bucket_name = "cloudlab-storage"
 }
 
 module "secrets-manager" {

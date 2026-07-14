@@ -1,4 +1,4 @@
-resource "aws_network" "this" {
+resource "aws_vpc" "this" {
   cidr_block           = var.network.cidr_block
   enable_dns_support   = true
   enable_dns_hostnames = true
