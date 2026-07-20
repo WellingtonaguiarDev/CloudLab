@@ -12,6 +12,7 @@ Portfolio de infraestrutura cloud em andamento, com foco em AWS usando Terraform
 | Ambiente | production |
 | Região AWS | us-east-1 (Norte da Virgínia) |
 | Terraform AWS Provider | ~> 6.0 |
+| Terraform TLS Provider | ~> 4.0 |
 | State Backend | S3 (desabilitado) |
 
 ---
@@ -20,24 +21,25 @@ Portfolio de infraestrutura cloud em andamento, com foco em AWS usando Terraform
 
 Todos os módulos ficam em `infrastructure/terraform/modules/` e são orquestrados via `infrastructure/terraform/live/cloudlab/modules.tf`.
 
-| Módulo | Serviço AWS |
-|---|---|
-| `acm` | AWS Certificate Manager |
-| `alb` | Application Load Balancer |
-| `cloudwatch` | CloudWatch (logs e métricas) |
-| `ecr` | Elastic Container Registry |
-| `efs` | Elastic File System |
-| `eks` | Elastic Kubernetes Service |
-| `elasticache` | ElastiCache (Redis/Memcached) |
-| `iam` | Identity and Access Management |
-| `kms` | Key Management Service |
-| `rds` | Relational Database Service |
-| `route53` | Route 53 (DNS) |
-| `s3` | Simple Storage Service |
-| `security-groups` | Security Groups (VPC) |
-| `secrets-manager` | Secrets Manager |
-| `vpc` | Virtual Private Cloud |
-| `waf` | Web Application Firewall |
+| Módulo | Serviço AWS | Status |
+|---|---|---|
+| `acm` | AWS Certificate Manager | 🔲 Placeholder |
+| `alb` | Application Load Balancer | 🔲 Placeholder |
+| `cloudwatch` | CloudWatch (logs e métricas) | 🔲 Placeholder |
+| `ecr` | Elastic Container Registry | 🔲 Placeholder |
+| `ecs` | Elastic Container Service (Fargate) | ✅ Implementado |
+| `efs` | Elastic File System | 🔲 Placeholder |
+| `eks` | Elastic Kubernetes Service | ✅ Implementado |
+| `elasticache` | ElastiCache (Redis/Memcached) | 🔲 Placeholder |
+| `iam` | Identity and Access Management | 🔲 Placeholder |
+| `kms` | Key Management Service | 🔲 Placeholder |
+| `rds` | Relational Database Service | ✅ Implementado |
+| `route53` | Route 53 (DNS) | 🔲 Placeholder |
+| `s3` | Simple Storage Service | ✅ Implementado |
+| `security-groups` | Security Groups (VPC) | 🔲 Placeholder |
+| `secrets-manager` | Secrets Manager | 🔲 Placeholder |
+| `vpc` | Virtual Private Cloud | ✅ Implementado |
+| `waf` | Web Application Firewall | 🔲 Placeholder |
 
 ---
 
@@ -64,14 +66,29 @@ CloudLab/
 │       │       ├── providers.tf      # Provider AWS (região via variável)
 │       │       ├── terraform.tfvars  # us-east-1 / production
 │       │       ├── variables.tf      # region, environment
-│       │       └── versions.tf       # AWS provider ~> 6.0
+│       │       └── versions.tf       # AWS provider ~> 6.0, TLS ~> 4.0
 │       └── modules/
 │           ├── acm/
 │           ├── alb/
 │           ├── cloudwatch/
 │           ├── ecr/
+│           ├── ecs/
+│           │   ├── cluster.tf
+│           │   ├── iam.tf
+│           │   ├── outputs.tf
+│           │   ├── security_group.tf
+│           │   ├── service.tf
+│           │   ├── task_definition.tf
+│           │   └── variables.tf
 │           ├── efs/
 │           ├── eks/
+│           │   ├── cluster.tf
+│           │   ├── iam.tf
+│           │   ├── node_group.tf
+│           │   ├── oidc.tf
+│           │   ├── outputs.tf
+│           │   ├── security_group.tf
+│           │   └── variables.tf
 │           ├── elasticache/
 │           ├── iam/
 │           ├── kms/
@@ -88,7 +105,6 @@ CloudLab/
 │           │   ├── main.tf
 │           │   ├── outputs.tf
 │           │   └── variables.tf
-│           ├── security-groups/
 │           ├── secrets-manager/
 │           ├── vpc/
 │           │   ├── acls.tf
@@ -195,6 +211,61 @@ CloudLab/
 | `public_subnet_ids` | Lista de IDs das subnets públicas |
 | `private_subnet_ids` | Lista de IDs das subnets privadas |
 | `network` | Objeto completo com toda a informação de rede |
+
+---
+
+## Módulo ECS
+
+| Atributo | Valor |
+|---|---|
+| Cluster Name | `cloudlab-ecs` |
+| Launch Type | Fargate |
+| Service Name | `nginx` |
+| Container Image | `nginx:latest` |
+| Container Port | 80 |
+| CPU | 256 |
+| Memory | 512 MB |
+| Network Mode | awsvpc |
+| Subnets | Privadas da VPC |
+| Assign Public IP | ❌ |
+| Execution Role | `cloudlab-ecs-execution-role` (AmazonECSTaskExecutionRolePolicy) |
+
+### Outputs do Módulo ECS
+
+| Output | Descrição |
+|---|---|
+| `cluster_id` | ECS Cluster ID |
+| `cluster_name` | ECS Cluster Name |
+| `service_name` | ECS Service Name |
+
+---
+
+## Módulo EKS
+
+| Atributo | Valor |
+|---|---|
+| Cluster Name | `cloudlab-eks` |
+| Kubernetes Version | `1.33` |
+| Subnets | Privadas da VPC |
+| Node Group | `cloudlab-eks-default` |
+| Instance Types | `t3.medium` |
+| Desired Size | 2 |
+| Min Size | 2 |
+| Max Size | 4 |
+| OIDC Provider | ✅ (para IRSA) |
+| Cluster IAM Role | `cloudlab-eks-cluster-role` (AmazonEKSClusterPolicy) |
+| Node IAM Role | `cloudlab-eks-nodegroup-role` (WorkerNode + CNI + ECR ReadOnly) |
+
+### Outputs do Módulo EKS
+
+| Output | Descrição |
+|---|---|
+| `cluster_name` | EKS Cluster Name |
+| `cluster_endpoint` | API Server Endpoint |
+| `cluster_arn` | EKS Cluster ARN |
+| `cluster_security_group_id` | Security Group ID do cluster |
+| `oidc_provider_arn` | OIDC Provider ARN |
+| `oidc_provider_url` | OIDC Provider URL |
 
 ---
 

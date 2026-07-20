@@ -17,6 +17,21 @@ module "ecr" {
 module "efs" {
   source = "../../modules/efs"
 }
+
+module "ecs" {
+
+  source = "../../modules/ecs"
+  cluster_name = "cloudlab-ecs"
+  service_name = "nginx"
+  container_image = "nginx:latest"
+
+  network = module.vpc.network
+
+  tags = {
+    Project = "CloudLab"
+  }
+}
+
 module "eks" {
   source = "../../modules/eks"
 
