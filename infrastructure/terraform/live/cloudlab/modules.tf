@@ -19,6 +19,23 @@ module "efs" {
 }
 module "eks" {
   source = "../../modules/eks"
+
+  cluster_name    = "cloudlab-eks"
+  cluster_version = "1.33"
+
+  network = module.vpc.network
+
+  instance_types = [
+    "t3.medium"
+  ]
+
+  desired_size = 2
+  min_size     = 2
+  max_size     = 4
+
+  tags = {
+    Environment = "prod"
+  }
 }
 
 module "elasticache" {
