@@ -1,0 +1,40 @@
+# Instalação via Helm:
+# helm repo add aws-efs-csi-driver https://kubernetes-sigs.github.io/aws-efs-csi-driver
+# helm repo update
+# helm upgrade --install aws-efs-csi-driver aws-efs-csi-driver/aws-efs-csi-driver \
+#   -n kube-system -f values.yaml
+
+controller:
+  serviceAccount:
+    create: false
+    name: efs-csi-controller-sa
+
+  replicaCount: 2
+
+  resources:
+    requests:
+      cpu: 10m
+      memory: 40Mi
+    limits:
+      cpu: 100m
+      memory: 256Mi
+
+node:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 40Mi
+    limits:
+      cpu: 100m
+      memory: 256Mi
+
+storageClasses:
+  - name: efs-sc
+    parameters:
+      provisioningMode: efs-ap
+      fileSystemId: FS_ID  # substituir pelo output do módulo EFS
+      directoryPerms: "755"
+      uid: "1000"
+      gid: "1000"
+    reclaimPolicy: Retain
+    volumeBindingMode: Immediate

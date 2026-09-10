@@ -1,0 +1,62 @@
+# Role: developer — leitura e execução no namespace app
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: developer
+  namespace: app
+rules:
+  - apiGroups: [""]
+    resources: [pods, services, configmaps, events]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [pods/log, pods/exec]
+    verbs: [get, create]
+  - apiGroups: [apps]
+    resources: [deployments, replicasets]
+    verbs: [get, list, watch]
+  - apiGroups: [autoscaling]
+    resources: [horizontalpodautoscalers]
+    verbs: [get, list, watch]
+---
+# Role: readonly — apenas leitura no namespace app
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: readonly
+  namespace: app
+rules:
+  - apiGroups: [""]
+    resources: [pods, services, configmaps, events]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [deployments, replicasets]
+    verbs: [get, list, watch]
+---
+# ClusterRole: monitoring-viewer — leitura de métricas
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: monitoring-viewer
+rules:
+  - apiGroups: [""]
+    resources: [nodes, pods, services, endpoints, namespaces]
+    verbs: [get, list, watch]
+  - apiGroups: [extensions, networking.k8s.io]
+    resources: [ingresses]
+    verbs: [get, list, watch]
+  - nonResourceURLs: [/metrics, /healthz]
+    verbs: [get]
+---
+# ClusterRoleBinding: Prometheus usa monitoring-viewer
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-monitoring-viewer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: monitoring-viewer
+subjects:
+  - kind: ServiceAccount
+    name: kube-prometheus-stack-prometheus
+    namespace: monitoring

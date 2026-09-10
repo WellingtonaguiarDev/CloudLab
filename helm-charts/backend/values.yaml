@@ -1,0 +1,67 @@
+replicaCount: 2
+
+image:
+  repository: ""
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: "backend"
+  annotations:
+    eks.amazonaws.com/role-arn: ""  # IRSA role ARN
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+env:
+  DB_HOST: ""
+  DB_PORT: "3306"
+  DB_NAME: "cloudlab"
+  REDIS_HOST: ""
+  REDIS_PORT: "6379"
+
+envFromSecrets:
+  - secretName: "cloudlab-rds"
+    keys:
+      - username
+      - password
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 15
+  periodSeconds: 20
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+topologySpreadConstraints:
+  enabled: true
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

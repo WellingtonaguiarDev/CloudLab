@@ -1,0 +1,55 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cloudlab-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: cloudlab.application
+      interval: 1m
+      rules:
+        - alert: BackendHighErrorRate
+          expr: |
+            rate(http_requests_total{namespace="app", app="backend", status=~"5.."}[5m])
+            /
+            rate(http_requests_total{namespace="app", app="backend"}[5m]) > 0.05
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Backend com alta taxa de erros 5xx"
+            description: "Taxa de erros acima de 5% nos últimos 5 minutos."
+
+        - alert: BackendHighLatency
+          expr: |
+            histogram_quantile(0.99,
+              rate(http_request_duration_seconds_bucket{namespace="app", app="backend"}[5m])
+            ) > 2
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Backend com latência alta (p99 > 2s)"
+            description: "P99 de latência acima de 2 segundos."
+
+        - alert: PodCrashLooping
+          expr: |
+            rate(kube_pod_container_status_restarts_total{namespace="app"}[15m]) * 60 * 15 > 3
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod em CrashLoop no namespace app"
+            description: "Pod {{ $labels.pod }} reiniciou mais de 3 vezes nos últimos 15 minutos."
+
+        - alert: PodNotReady
+          expr: |
+            kube_pod_status_ready{namespace="app", condition="true"} == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod não está Ready no namespace app"
+            description: "Pod {{ $labels.pod }} não está pronto há mais de 5 minutos."

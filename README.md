@@ -1,6 +1,6 @@
 # CloudLab
 
-Portfolio de infraestrutura cloud em andamento, com foco em AWS usando Terraform, Kubernetes, Helm e práticas modernas de DevOps/Platform Engineering.
+Portfolio de infraestrutura cloud completo com foco em AWS, usando Terraform, Kubernetes, Helm e práticas modernas de DevOps/Platform Engineering.
 
 ---
 
@@ -17,29 +17,73 @@ Portfolio de infraestrutura cloud em andamento, com foco em AWS usando Terraform
 
 ---
 
+## Arquitetura
+
+```
+Internet
+    │
+    ▼
+ [WAF v2]
+    │
+    ▼
+ [ALB] ── HTTPS (ACM) ── Route53
+    │
+    ├── /api/*  ──► [EKS] backend  ──► [RDS MySQL]
+    │                               ──► [ElastiCache Redis]
+    │                               ──► [S3]
+    │                               ──► [Secrets Manager]
+    │
+    └── /*      ──► [EKS] frontend
+    
+[ECS Fargate] ── workloads alternativos
+[EFS]         ── storage compartilhado (EKS)
+[ECR]         ── registry de imagens
+[CloudWatch]  ── logs e alarmes
+[KMS]         ── criptografia centralizada
+```
+
+---
+
+## Stack de Tecnologias
+
+| Camada | Tecnologia |
+|---|---|
+| IaC | Terraform ~> 6.0 |
+| Containers | EKS 1.33 + ECS Fargate |
+| Package Manager | Helm |
+| CI/CD | GitHub Actions (OIDC) |
+| Monitoring | Prometheus + Grafana (kube-prometheus-stack) |
+| Service Mesh | AWS Load Balancer Controller |
+| Storage | EBS gp3, EFS, S3 |
+| Database | RDS MySQL 8.4 |
+| Cache | ElastiCache Redis 7.1 |
+| Security | WAF v2, KMS, Secrets Manager, Network Policies, PSS |
+
+---
+
 ## Módulos Terraform
 
 Todos os módulos ficam em `infrastructure/terraform/modules/` e são orquestrados via `infrastructure/terraform/live/cloudlab/modules.tf`.
 
-| Módulo | Serviço AWS | Status |
+| Módulo | Serviço AWS | Detalhe |
 |---|---|---|
-| `acm` | AWS Certificate Manager | 🔲 Placeholder |
-| `alb` | Application Load Balancer | 🔲 Placeholder |
-| `cloudwatch` | CloudWatch (logs e métricas) | 🔲 Placeholder |
-| `ecr` | Elastic Container Registry | 🔲 Placeholder |
-| `ecs` | Elastic Container Service (Fargate) | ✅ Implementado |
-| `efs` | Elastic File System | 🔲 Placeholder |
-| `eks` | Elastic Kubernetes Service | ✅ Implementado |
-| `elasticache` | ElastiCache (Redis/Memcached) | 🔲 Placeholder |
-| `iam` | Identity and Access Management | 🔲 Placeholder |
-| `kms` | Key Management Service | 🔲 Placeholder |
-| `rds` | Relational Database Service | ✅ Implementado |
-| `route53` | Route 53 (DNS) | 🔲 Placeholder |
-| `s3` | Simple Storage Service | ✅ Implementado |
-| `security-groups` | Security Groups (VPC) | 🔲 Placeholder |
-| `secrets-manager` | Secrets Manager | 🔲 Placeholder |
-| `vpc` | Virtual Private Cloud | ✅ Implementado |
-| `waf` | Web Application Firewall | 🔲 Placeholder |
+| `vpc` | Virtual Private Cloud | 3 AZs, subnets públicas/privadas, NAT Gateway, NACLs |
+| `eks` | Elastic Kubernetes Service | v1.33, t3.medium, OIDC/IRSA |
+| `ecs` | Elastic Container Service | Fargate, nginx, awsvpc |
+| `rds` | Relational Database Service | MySQL 8.4, encrypted, subnet privada |
+| `s3` | Simple Storage Service | SSE-S3, Block Public Access |
+| `ecr` | Elastic Container Registry | IMMUTABLE tags, scan on push |
+| `kms` | Key Management Service | 3 chaves (rds, s3, secrets), key rotation |
+| `secrets-manager` | Secrets Manager | KMS encrypted, credenciais RDS |
+| `iam` | Identity and Access Management | IRSA roles (backend, controllers) |
+| `security-groups` | Security Groups | ALB, ElastiCache, EFS |
+| `acm` | AWS Certificate Manager | DNS validation via Route53 |
+| `route53` | Route 53 | Hosted zone, ALIAS records para ALB |
+| `alb` | Application Load Balancer | HTTP→HTTPS redirect, TLS 1.3, target groups |
+| `efs` | Elastic File System | KMS encrypted, mount targets 3 AZs |
+| `elasticache` | ElastiCache | Redis 7.1, at-rest + in-transit encryption |
+| `cloudwatch` | CloudWatch | Log groups, alarmes RDS/ECS/ALB, dashboard |
+| `waf` | Web Application Firewall | CommonRuleSet, SQLi, KnownBadInputs, rate limit |
 
 ---
 
@@ -51,78 +95,94 @@ CloudLab/
 │   ├── backend/
 │   └── frontend/
 ├── cicd/
+│   └── .github/
+│       └── workflows/
+│           ├── ci.yaml           # Build & Push ECR
+│           ├── cd.yaml           # Deploy Helm no EKS
+│           └── terraform.yaml    # Plan/Apply com aprovação
 ├── diagrams/
 ├── docs/
 ├── helm-charts/
+│   ├── backend/
+│   │   ├── Chart.yaml
+│   │   ├── values.yaml
+│   │   └── templates/
+│   │       ├── _helpers.tpl
+│   │       ├── deployment.yaml
+│   │       ├── service.yaml
+│   │       ├── serviceaccount.yaml
+│   │       ├── hpa.yaml
+│   │       └── pdb.yaml
+│   └── frontend/
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       └── templates/
+│           ├── _helpers.tpl
+│           ├── deployment.yaml
+│           ├── service.yaml
+│           ├── serviceaccount.yaml
+│           ├── hpa.yaml
+│           └── pdb.yaml
 ├── infrastructure/
 │   ├── bootstrap/
 │   └── terraform/
 │       ├── live/
 │       │   └── cloudlab/
-│       │       ├── backend.tf        # Remote state S3 (comentado)
-│       │       ├── locals.tf         # Tags padrão (Environment, Project, Owner)
-│       │       ├── modules.tf        # Orquestração de todos os módulos
+│       │       ├── backend.tf
+│       │       ├── locals.tf
+│       │       ├── modules.tf
 │       │       ├── outputs.tf
-│       │       ├── providers.tf      # Provider AWS (região via variável)
-│       │       ├── terraform.tfvars  # us-east-1 / production
-│       │       ├── variables.tf      # region, environment
-│       │       └── versions.tf       # AWS provider ~> 6.0, TLS ~> 4.0
+│       │       ├── providers.tf
+│       │       ├── terraform.tfvars
+│       │       ├── variables.tf
+│       │       └── versions.tf
 │       └── modules/
 │           ├── acm/
 │           ├── alb/
 │           ├── cloudwatch/
 │           ├── ecr/
 │           ├── ecs/
-│           │   ├── cluster.tf
-│           │   ├── iam.tf
-│           │   ├── outputs.tf
-│           │   ├── security_group.tf
-│           │   ├── service.tf
-│           │   ├── task_definition.tf
-│           │   └── variables.tf
 │           ├── efs/
 │           ├── eks/
-│           │   ├── cluster.tf
-│           │   ├── iam.tf
-│           │   ├── node_group.tf
-│           │   ├── oidc.tf
-│           │   ├── outputs.tf
-│           │   ├── security_group.tf
-│           │   └── variables.tf
 │           ├── elasticache/
 │           ├── iam/
 │           ├── kms/
 │           ├── rds/
-│           │   ├── main.tf
-│           │   ├── outputs.tf
-│           │   ├── parameter_group.tf
-│           │   ├── random_password.tf
-│           │   ├── security_group.tf
-│           │   ├── subnet_group.tf
-│           │   └── variables.tf
 │           ├── route53/
 │           ├── s3/
-│           │   ├── main.tf
-│           │   ├── outputs.tf
-│           │   └── variables.tf
 │           ├── secrets-manager/
+│           ├── security-groups/
 │           ├── vpc/
-│           │   ├── acls.tf
-│           │   ├── eip_natgateway.tf
-│           │   ├── internet_gateway.tf
-│           │   ├── locals.tf
-│           │   ├── outputs.tf
-│           │   ├── route_tables.tf
-│           │   ├── subnets.tf
-│           │   ├── variables.tf
-│           │   └── vpc.tf
 │           └── waf/
 ├── kubernetes/
+│   └── kube-system/
+│       ├── aws-load-balancer-controller/
+│       ├── aws-ebs-csi-driver/
+│       ├── aws-efs-csi-driver/
+│       ├── cluster-autoscaler/
+│       └── metrics-server/
 ├── monitoring/
-├── plataform/
-├── portfolio/
+│   ├── prometheus/
+│   │   ├── values.yaml           # kube-prometheus-stack
+│   │   ├── servicemonitor.yaml
+│   │   └── alerts.yaml           # PrometheusRule customizado
+│   └── grafana/
+│       └── dashboards/
+│           └── cloudlab.yaml     # Dashboard da aplicação
 ├── runbooks/
+│   ├── deploy.md
+│   ├── troubleshooting-pods.md
+│   ├── incident-response.md
+│   └── infrastructure.md
 ├── security/
+│   ├── network-policies/
+│   │   ├── app.yaml
+│   │   └── monitoring.yaml
+│   ├── pod-security/
+│   │   └── namespaces.yaml
+│   ├── rbac/
+│   │   └── roles.yaml
+│   └── checklist.md
 ├── tests/
 ├── tools/
 └── README.md
@@ -153,91 +213,6 @@ CloudLab/
 | PROD-Subnet-Private-B | `172.22.96.0/19` | us-east-1b | Privada |
 | PROD-Subnet-Private-C | `172.22.128.0/19` | us-east-1c | Privada |
 
-### Route Tables
-
-| Tabela | Destino | Target |
-|---|---|---|
-| Public | `0.0.0.0/0` | Internet Gateway |
-| Private | `0.0.0.0/0` | NAT Gateway |
-
-### NACLs — Pública (Inbound)
-
-| Regra | Protocolo | Porta(s) | Ação |
-|---|---|---|---|
-| 100 | TCP | 80 | Allow |
-| 110 | TCP | 443 | Allow |
-| 120 | TCP | 22 | Allow |
-| 130 | TCP | 1024–65535 | Allow (ephemeral) |
-
-### NACLs — Pública (Outbound)
-
-| Regra | Protocolo | Porta(s) | Destino | Ação |
-|---|---|---|---|---|
-| 100 | TCP | 80 | 0.0.0.0/0 | Allow |
-| 110 | TCP | 443 | 0.0.0.0/0 | Allow |
-| 120 | TCP | 0–65535 | VPC CIDR | Allow |
-| 130 | TCP | 1024–65535 | 0.0.0.0/0 | Allow (ephemeral) |
-
-### NACLs — Privada (Inbound)
-
-| Regra | Protocolo | Porta(s) | Origem | Ação |
-|---|---|---|---|---|
-| 100 | TCP | 0–65535 | VPC CIDR | Allow |
-| 110 | TCP | 1024–65535 | 0.0.0.0/0 | Allow (ephemeral via NAT) |
-
-### NACLs — Privada (Outbound)
-
-| Regra | Protocolo | Porta(s) | Destino | Ação |
-|---|---|---|---|---|
-| 100 | TCP | 80 | 0.0.0.0/0 | Allow |
-| 110 | TCP | 443 | 0.0.0.0/0 | Allow |
-| 120 | TCP | 0–65535 | VPC CIDR | Allow |
-
-### Outputs do Módulo VPC
-
-| Output | Descrição |
-|---|---|
-| `id` | VPC ID |
-| `arn` | VPC ARN |
-| `cidr_block` | VPC CIDR Block |
-| `internet_gateway_id` | Internet Gateway ID |
-| `nat_gateway_id` | NAT Gateway ID |
-| `nat_gateway_public_ip` | IP público do NAT Gateway |
-| `nat_gateway_allocation_id` | EIP Allocation ID |
-| `public_route_table_id` | Route Table pública ID |
-| `private_route_table_id` | Route Table privada ID |
-| `public_network_acl_id` | NACL pública ID |
-| `private_network_acl_id` | NACL privada ID |
-| `public_subnet_ids` | Lista de IDs das subnets públicas |
-| `private_subnet_ids` | Lista de IDs das subnets privadas |
-| `network` | Objeto completo com toda a informação de rede |
-
----
-
-## Módulo ECS
-
-| Atributo | Valor |
-|---|---|
-| Cluster Name | `cloudlab-ecs` |
-| Launch Type | Fargate |
-| Service Name | `nginx` |
-| Container Image | `nginx:latest` |
-| Container Port | 80 |
-| CPU | 256 |
-| Memory | 512 MB |
-| Network Mode | awsvpc |
-| Subnets | Privadas da VPC |
-| Assign Public IP | ❌ |
-| Execution Role | `cloudlab-ecs-execution-role` (AmazonECSTaskExecutionRolePolicy) |
-
-### Outputs do Módulo ECS
-
-| Output | Descrição |
-|---|---|
-| `cluster_id` | ECS Cluster ID |
-| `cluster_name` | ECS Cluster Name |
-| `service_name` | ECS Service Name |
-
 ---
 
 ## Módulo EKS
@@ -253,19 +228,33 @@ CloudLab/
 | Min Size | 2 |
 | Max Size | 4 |
 | OIDC Provider | ✅ (para IRSA) |
-| Cluster IAM Role | `cloudlab-eks-cluster-role` (AmazonEKSClusterPolicy) |
-| Node IAM Role | `cloudlab-eks-nodegroup-role` (WorkerNode + CNI + ECR ReadOnly) |
+| Cluster IAM Role | `cloudlab-eks-cluster-role` |
+| Node IAM Role | `cloudlab-eks-nodegroup-role` |
 
-### Outputs do Módulo EKS
+### Controllers (kube-system)
 
-| Output | Descrição |
+| Controller | Função |
 |---|---|
-| `cluster_name` | EKS Cluster Name |
-| `cluster_endpoint` | API Server Endpoint |
-| `cluster_arn` | EKS Cluster ARN |
-| `cluster_security_group_id` | Security Group ID do cluster |
-| `oidc_provider_arn` | OIDC Provider ARN |
-| `oidc_provider_url` | OIDC Provider URL |
+| AWS Load Balancer Controller | Provisiona ALB/NLB via Ingress |
+| AWS EBS CSI Driver | StorageClass `gp3` encrypted (default) |
+| AWS EFS CSI Driver | StorageClass `efs-sc` com access point |
+| Cluster Autoscaler | Escala node groups automaticamente |
+| Metrics Server | Habilita HPA e `kubectl top` |
+
+---
+
+## Módulo ECS
+
+| Atributo | Valor |
+|---|---|
+| Cluster Name | `cloudlab-ecs` |
+| Launch Type | Fargate |
+| Service Name | `nginx` |
+| Container Port | 80 |
+| CPU | 256 |
+| Memory | 512 MB |
+| Network Mode | awsvpc |
+| Subnets | Privadas da VPC |
 
 ---
 
@@ -277,59 +266,121 @@ CloudLab/
 | Engine | MySQL 8.4 |
 | Instance Class | `db.t3.micro` |
 | Storage | 20 GB (autoscaling até 100 GB) |
-| Database Name | `cloudlab` |
-| Master User | `admin` |
-| Password | Gerada via `random_password` (32 chars) |
 | Multi-AZ | ❌ |
 | Backup Retention | 7 dias |
 | Storage Encrypted | ✅ |
 | Publicly Accessible | ❌ |
-| Deletion Protection | ❌ |
 | Parameter Group | `mysql8.4` (utf8mb4) |
-| Subnet Group | Subnets privadas da VPC |
-| Security Group | Ingress MySQL 3306 restrito ao VPC CIDR |
-| Dependência | `module.vpc.network` |
-
-### Outputs do Módulo RDS
-
-| Output | Descrição |
-|---|---|
-| `id` | RDS Instance ID |
-| `arn` | RDS Instance ARN |
-| `endpoint` | Connection endpoint |
-| `address` | Hostname |
-| `port` | Porta |
-| `database_name` | Nome do banco |
-| `username` | Master username |
-| `security_group_id` | Security Group ID |
-| `subnet_group_name` | Subnet Group name |
-| `parameter_group_name` | Parameter Group name |
-| `instance_class` | Classe da instância |
+| Credenciais | Secrets Manager (`cloudlab/rds`) |
 
 ---
 
-## Módulo S3
+## Módulo KMS
+
+| Chave | Alias | Uso |
+|---|---|---|
+| cloudlab-kms-rds | `alias/cloudlab-rds` | Criptografia RDS |
+| cloudlab-kms-s3 | `alias/cloudlab-s3` | Criptografia S3 / EFS / ElastiCache |
+| cloudlab-kms-secrets | `alias/cloudlab-secrets` | Criptografia Secrets Manager |
+
+---
+
+## Helm Charts
+
+### Backend
 
 | Atributo | Valor |
 |---|---|
-| Bucket Name | `cloudlab-storage` |
-| Encryption | AES256 (SSE-S3) |
-| Block Public ACLs | ✅ |
-| Block Public Policy | ✅ |
-| Ignore Public ACLs | ✅ |
-| Restrict Public Buckets | ✅ |
+| Namespace | `app` |
+| Replicas | 2 (HPA: 2–6) |
+| CPU Request/Limit | 100m / 500m |
+| Memory Request/Limit | 128Mi / 512Mi |
+| Service Port | 8080 |
+| Health Check | `GET /health` |
+| IRSA | ✅ (S3 + Secrets Manager) |
+| PDB | minAvailable: 1 |
+| TopologySpread | 3 AZs |
 
-### Outputs do Módulo S3
+### Frontend
 
-| Output | Descrição |
+| Atributo | Valor |
 |---|---|
-| `id` | Bucket ID |
-| `arn` | Bucket ARN |
-| `bucket_name` | Nome do bucket |
-| `domain_name` | Bucket domain name |
+| Namespace | `app` |
+| Replicas | 2 (HPA: 2–4) |
+| CPU Request/Limit | 50m / 200m |
+| Memory Request/Limit | 64Mi / 256Mi |
+| Service Port | 80 |
+| PDB | minAvailable: 1 |
+| TopologySpread | 3 AZs |
+
+---
+
+## CI/CD
+
+| Workflow | Trigger | Ação |
+|---|---|---|
+| `ci.yaml` | Push/PR em `main` (applications/) | Build + Push ECR com SHA tag |
+| `cd.yaml` | CI com sucesso em `main` | Helm upgrade + rollout verify |
+| `terraform.yaml` | Push/PR em `main` (infrastructure/) | Plan no PR, Apply com aprovação |
+
+- Autenticação AWS via **OIDC** → zero `AWS_ACCESS_KEY_ID`
+- Terraform Apply requer aprovação manual via `environment: production`
+- Helm com `--atomic` → rollback automático em falha
+
+---
+
+## Monitoring
+
+| Componente | Detalhe |
+|---|---|
+| Prometheus | Retenção 15d / 10GB, PVC gp3 |
+| Grafana | Dashboard CloudLab (Request Rate, Error Rate, Latency p99, CPU, Memory) |
+| Alertmanager | Roteamento configurado |
+| Node Exporter | Métricas de nodes |
+| Kube State Metrics | Métricas de objetos Kubernetes |
+
+### Alertas
+
+| Alerta | Condição | Severidade |
+|---|---|---|
+| BackendHighErrorRate | 5xx > 5% por 5min | Critical |
+| BackendHighLatency | p99 > 2s por 5min | Warning |
+| PodCrashLooping | > 3 restarts em 15min | Critical |
+| PodNotReady | Pod não ready por 5min | Warning |
+| RDS CPU High | CPU > 80% | Warning |
+| RDS Storage Low | Storage livre < 5GB | Warning |
+| ECS CPU High | CPU > 80% | Warning |
+| ALB 5xx High | Erros 5xx > 10 | Warning |
+
+---
+
+## Security
+
+| Controle | Detalhe |
+|---|---|
+| NetworkPolicy | default-deny-all + allow seletivo por porta/seletor |
+| Pod Security Standards | `restricted` (app), `baseline` (monitoring) |
+| RBAC | Roles `developer`, `readonly`, `monitoring-viewer` |
+| IRSA | Todos os workloads e controllers usam IRSA |
+| WAF | CommonRuleSet + SQLi + KnownBadInputs + rate limit 2000 req/5min |
+| KMS | Key rotation automática em todas as chaves |
+| Secrets | Zero credenciais em código — tudo via Secrets Manager |
+| TLS | ALB com TLS 1.3, redirect HTTP→HTTPS |
+| ECR | Tag immutability + scan on push |
+
+---
+
+## Runbooks
+
+| Runbook | Conteúdo |
+|---|---|
+| `deploy.md` | Fluxo CI/CD, deploy manual, rollback |
+| `troubleshooting-pods.md` | CrashLoop, Pending, health check, conectividade |
+| `incident-response.md` | Resposta a cada alerta do Prometheus |
+| `infrastructure.md` | Terraform, kubeconfig, helm installs, Grafana |
 
 ---
 
 ## Status
 
-> 🚧 Portfolio em andamento
+> ✅ Portfolio completo

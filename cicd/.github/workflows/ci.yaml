@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "applications/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "applications/**"
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+
+jobs:
+  backend:
+    name: Build & Push Backend
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: tag
+        run: echo "TAG=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+
+      - name: Build & Push
+        uses: docker/build-push-action@v5
+        with:
+          context: applications/backend
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ env.ECR_REGISTRY }}/backend:${{ steps.tag.outputs.TAG }}
+            ${{ env.ECR_REGISTRY }}/backend:latest
+          cache-from: type=registry,ref=${{ env.ECR_REGISTRY }}/backend:latest
+          cache-to: type=inline
+
+      - name: Output image tag
+        if: github.ref == 'refs/heads/main'
+        run: echo "IMAGE_TAG=${{ steps.tag.outputs.TAG }}" >> $GITHUB_ENV
+
+  frontend:
+    name: Build & Push Frontend
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: tag
+        run: echo "TAG=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+
+      - name: Build & Push
+        uses: docker/build-push-action@v5
+        with:
+          context: applications/frontend
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ env.ECR_REGISTRY }}/frontend:${{ steps.tag.outputs.TAG }}
+            ${{ env.ECR_REGISTRY }}/frontend:latest
+          cache-from: type=registry,ref=${{ env.ECR_REGISTRY }}/frontend:latest
+          cache-to: type=inline

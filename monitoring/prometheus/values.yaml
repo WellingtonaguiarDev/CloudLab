@@ -1,0 +1,147 @@
+# Instalação via Helm:
+# helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+# helm repo update
+# helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+#   -n monitoring --create-namespace -f values.yaml
+
+nameOverride: prometheus
+
+############################################
+# Prometheus
+############################################
+
+prometheus:
+  prometheusSpec:
+    retention: 15d
+    retentionSize: "10GB"
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 20Gi
+
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+
+############################################
+# Alertmanager
+############################################
+
+alertmanager:
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 5Gi
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: [alertname, namespace]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: "null"
+      routes:
+        - matchers:
+            - alertname = Watchdog
+          receiver: "null"
+    receivers:
+      - name: "null"
+
+############################################
+# Grafana
+############################################
+
+grafana:
+  enabled: true
+  adminPassword: changeme  # substituir por secret em produção
+
+  persistence:
+    enabled: true
+    storageClassName: gp3
+    size: 5Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: monitoring
+
+  grafana.ini:
+    server:
+      root_url: https://grafana.cloudlab.example.com
+    auth:
+      disable_login_form: false
+
+############################################
+# Node Exporter
+############################################
+
+nodeExporter:
+  enabled: true
+
+############################################
+# Kube State Metrics
+############################################
+
+kubeStateMetrics:
+  enabled: true
+
+############################################
+# Default Rules
+############################################
+
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    etcd: false
+    configReplicationController: false
+    kubeApiserverAvailability: true
+    kubeApiserverBurnrate: true
+    kubeApiserverHistogram: true
+    kubeApiserverSlos: true
+    kubeControllerManager: false
+    kubelet: true
+    kubeProxy: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeStateMetrics: true
+    network: true
+    node: true
+    nodeExporterAlerting: true
+    nodeExporterRecording: true
+    prometheus: true
