@@ -10,3 +10,9 @@ crash.*.log
 
 # Plans
 *.tfplan
+
+# Node / applications
+**/node_modules/
+applications/frontend/dist/
+npm-debug.log*
+.env

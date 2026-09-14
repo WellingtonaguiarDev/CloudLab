@@ -57,9 +57,9 @@ module "efs" {
 
 module "ecs" {
 
-  source = "../../modules/ecs"
-  cluster_name = "cloudlab-ecs"
-  service_name = "nginx"
+  source          = "../../modules/ecs"
+  cluster_name    = "cloudlab-ecs"
+  service_name    = "nginx"
   container_image = "nginx:latest"
 
   network = module.vpc.network
@@ -163,7 +163,7 @@ module "kms" {
 
 module "rds" {
 
-  source = "../../modules/rds"
+  source  = "../../modules/rds"
   network = module.vpc.network
 
 }
@@ -179,7 +179,7 @@ module "route53" {
 }
 
 module "s3" {
-  source = "../../modules/s3"
+  source      = "../../modules/s3"
   bucket_name = "cloudlab-storage"
 }
 

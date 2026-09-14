@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: frontend
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/wellington/CloudLab.git
+    targetRevision: main
+    path: helm-charts/frontend
+    helm:
+      values: |
+        image:
+          repository: ""   # <account>.dkr.ecr.us-east-1.amazonaws.com/frontend
+          tag: "latest"
+        env:
+          API_URL: "https://cloudlab.example.com/api"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

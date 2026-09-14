@@ -2,6 +2,8 @@
 
 Portfolio de infraestrutura cloud completo com foco em AWS, usando Terraform, Kubernetes, Helm e práticas modernas de DevOps/Platform Engineering.
 
+> 🚀 **Como rodar do zero:** siga o [RUNBOOK.md](./RUNBOOK.md) — passo a passo completo, do clone até a aplicação no ar. Documentação detalhada em [docs/](./docs/).
+
 ---
 
 ## Visão Geral

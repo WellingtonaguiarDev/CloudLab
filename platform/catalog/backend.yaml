@@ -1,0 +1,23 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backend
+  description: API backend do CloudLab (Node.js + Express)
+  tags:
+    - nodejs
+    - express
+    - api
+  links:
+    - url: https://cloudlab.example.com/api
+      title: API (produção)
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: team-cloudlab
+  system: cloudlab
+  dependsOn:
+    - resource:default/rds-mysql
+    - resource:default/elasticache-redis
+  providesApis:
+    - cloudlab-api

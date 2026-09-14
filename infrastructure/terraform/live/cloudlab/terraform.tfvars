@@ -1,2 +1,2 @@
-region       = "us-east-1"
-environment  = "production"
+region      = "us-east-1"
+environment = "production"

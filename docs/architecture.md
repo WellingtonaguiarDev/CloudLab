@@ -76,3 +76,13 @@ A VPC `PROD-cloudlab-VPC` (`172.22.0.0/16`) usa 3 zonas de disponibilidade, com 
 - As **aplicações** (`applications/backend`, `applications/frontend`) são placeholders; as imagens são construídas a partir desses diretórios no pipeline de CI.
 
 Consulte [infrastructure.md](./infrastructure.md) para o detalhe de cada módulo Terraform e [deployment.md](./deployment.md) para o fluxo de deploy.
+
+## Diagramas
+
+Diagramas em Mermaid (renderizáveis no GitHub/VS Code) estão em [../diagrams/](../diagrams/):
+
+- [architecture.md](../diagrams/architecture.md) — arquitetura geral AWS
+- [network.md](../diagrams/network.md) — topologia da VPC
+- [request-flow.md](../diagrams/request-flow.md) — sequência de uma requisição
+- [cicd.md](../diagrams/cicd.md) — fluxo dos pipelines
+- [terraform-modules.md](../diagrams/terraform-modules.md) — dependências entre módulos

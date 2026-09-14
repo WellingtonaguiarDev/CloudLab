@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: backend
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/wellington/CloudLab.git
+    targetRevision: main
+    path: helm-charts/backend
+    helm:
+      # Valores sobrescritos no deploy GitOps. image.tag e ARNs devem vir de um
+      # values de ambiente ou do Argo CD Image Updater.
+      values: |
+        image:
+          repository: ""   # <account>.dkr.ecr.us-east-1.amazonaws.com/backend
+          tag: "latest"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

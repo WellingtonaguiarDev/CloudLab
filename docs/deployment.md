@@ -80,8 +80,8 @@ Os workflows ficam em `cicd/.github/workflows/`. Todos usam OIDC (`aws-actions/c
 - **Job** `deploy` (roda só se `conclusion == 'success'`):
   1. Configura OIDC e atualiza o kubeconfig do cluster `cloudlab-eks`.
   2. Recalcula a tag (`${GITHUB_SHA::8}`).
-  3. `helm upgrade --install backend` no namespace `app`, com `image.repository`/`image.tag`, anotação IRSA, `env.DB_HOST` e `env.REDIS_HOST` (via secrets), `--atomic --timeout 5m`.
-  4. `helm upgrade --install frontend` no namespace `app`, com imagem e `env.API_URL=https://cloudlab.example.com/api`, `--atomic --timeout 5m`.
+  3. `helm upgrade --install cloudlab-backend` no namespace `app`, com `image.repository`/`image.tag`, anotação IRSA, `env.DB_HOST` e `env.REDIS_HOST` (via secrets), `--atomic --timeout 5m`.
+  4. `helm upgrade --install cloudlab-frontend` no namespace `app`, com imagem e `env.API_URL=https://cloudlab.example.com/api`, `--atomic --timeout 5m`.
   5. Verifica o rollout: `kubectl rollout status deployment/cloudlab-backend` e `deployment/cloudlab-frontend` (timeout 3m).
 
 `--atomic` garante **rollback automático** se o upgrade falhar.
@@ -110,13 +110,13 @@ Caso precise implantar fora do pipeline:
 ```bash
 aws eks update-kubeconfig --name cloudlab-eks --region us-east-1
 
-helm upgrade --install backend helm-charts/backend \
+helm upgrade --install cloudlab-backend helm-charts/backend \
   --namespace app --create-namespace \
   --set image.repository=<account>.dkr.ecr.us-east-1.amazonaws.com/backend \
   --set image.tag=<tag> \
   --atomic --timeout 5m
 
-helm upgrade --install frontend helm-charts/frontend \
+helm upgrade --install cloudlab-frontend helm-charts/frontend \
   --namespace app --create-namespace \
   --set image.repository=<account>.dkr.ecr.us-east-1.amazonaws.com/frontend \
   --set image.tag=<tag> \

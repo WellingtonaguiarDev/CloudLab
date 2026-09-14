@@ -1,5 +1,9 @@
 {{- define "frontend.fullname" -}}
-{{- .Release.Name }}-frontend
+{{- if contains "frontend" .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-frontend" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
 {{- end }}
 
 {{- define "frontend.labels" -}}

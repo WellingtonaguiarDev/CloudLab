@@ -100,6 +100,6 @@ terraform destroy
 
 ## Próximos passos
 
-- Adicionar o código real das aplicações em `applications/backend` e `applications/frontend` (hoje são placeholders usados como contexto de build no CI).
+- As aplicações de exemplo já existem em `applications/backend` (Node/Express) e `applications/frontend` (React/nginx) — ver [applications.md](./applications.md). Substitua a lógica de negócio conforme a necessidade real.
 - Substituir o domínio de exemplo `cloudlab.example.com` por um domínio real.
 - Habilitar o backend de state remoto (S3 + DynamoDB).

@@ -1,0 +1,66 @@
+"use strict";
+
+const express = require("express");
+const client = require("prom-client");
+
+const PORT = parseInt(process.env.PORT || "__PORT__", 10);
+const SERVICE = "__SERVICE_NAME__";
+
+// --- Métricas Prometheus alinhadas com a plataforma ---
+const register = new client.Registry();
+register.setDefaultLabels({ app: SERVICE });
+client.collectDefaultMetrics({ register });
+
+const httpRequestsTotal = new client.Counter({
+  name: "http_requests_total",
+  help: "Total de requisições HTTP",
+  labelNames: ["method", "route", "status"],
+  registers: [register],
+});
+
+const httpRequestDuration = new client.Histogram({
+  name: "http_request_duration_seconds",
+  help: "Duração das requisições HTTP",
+  labelNames: ["method", "route", "status"],
+  buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+  registers: [register],
+});
+
+const app = express();
+app.disable("x-powered-by");
+app.use(express.json());
+
+app.use((req, res, next) => {
+  const end = httpRequestDuration.startTimer();
+  res.on("finish", () => {
+    const route = req.route ? req.baseUrl + req.route.path : req.path;
+    const labels = { method: req.method, route, status: String(res.statusCode) };
+    httpRequestsTotal.inc(labels);
+    end(labels);
+  });
+  next();
+});
+
+// Contratos da plataforma:
+app.get("/health", (_req, res) => res.status(200).json({ status: "ok" }));
+
+app.get("/metrics", async (_req, res) => {
+  res.set("Content-Type", register.contentType);
+  res.end(await register.metrics());
+});
+
+// Rotas de negócio sob /api:
+const api = express.Router();
+api.get("/", (_req, res) => res.json({ service: SERVICE, version: "1.0.0" }));
+app.use("/api", api);
+
+app.use((_req, res) => res.status(404).json({ error: "not_found" }));
+
+const server = app.listen(PORT, () => console.log(`${SERVICE} ouvindo na porta ${PORT}`));
+
+function shutdown() {
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(1), 10000).unref();
+}
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);

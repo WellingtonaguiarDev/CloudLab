@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudlab-root
+  namespace: argocd
+  # Impede que o próprio root-app seja removido em um sync acidental.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    # Ajuste para a URL real do repositório.
+    repoURL: https://github.com/wellington/CloudLab.git
+    targetRevision: main
+    # App of Apps: aponta para o diretório com os demais Applications.
+    path: platform/gitops/applications
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

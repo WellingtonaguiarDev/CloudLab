@@ -1,5 +1,9 @@
 {{- define "backend.fullname" -}}
-{{- .Release.Name }}-backend
+{{- if contains "backend" .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-backend" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
 {{- end }}
 
 {{- define "backend.labels" -}}

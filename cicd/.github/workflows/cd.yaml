@@ -39,7 +39,7 @@ jobs:
 
       - name: Deploy Backend
         run: |
-          helm upgrade --install backend helm-charts/backend \
+          helm upgrade --install cloudlab-backend helm-charts/backend \
             --namespace app \
             --create-namespace \
             --set image.repository=${{ env.ECR_REGISTRY }}/backend \
@@ -52,7 +52,7 @@ jobs:
 
       - name: Deploy Frontend
         run: |
-          helm upgrade --install frontend helm-charts/frontend \
+          helm upgrade --install cloudlab-frontend helm-charts/frontend \
             --namespace app \
             --create-namespace \
             --set image.repository=${{ env.ECR_REGISTRY }}/frontend \
